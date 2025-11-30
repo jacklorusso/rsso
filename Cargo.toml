@@ -1,0 +1,13 @@
+[package]
+name = "rsso"
+version = "0.1.0"
+edition = "2024"
+authors = ["Jack Lo Russo <jack.lorusso@gmail.com>"]
+license = "MIT"
+description = "CLI tool for RSS feeds"
+readme = "README.md"
+homepage = "https://github.com/jacklorusso/rsso"
+repository = "https://github.com/jacklorusso/rsso"
+keywords = ["cli", "terminal", "rss"]
+categories = ["command-line-utilities"]
+[dependencies]
