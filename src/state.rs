@@ -10,7 +10,7 @@ use crate::config::Config;
 /// A subscribed feed
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Feed {
-    pub id: String, // alias or generated id
+    pub id: String, // auto-generated id (or alias if set)
     pub url: String,
     pub alias: Option<String>,
     pub title: Option<String>,
@@ -37,7 +37,7 @@ pub struct State {
     pub items: Vec<Item>,
 }
 
-/// Load state from the JSON file, or return an empty state if it doesn't exist.
+/// Load state from JSON (or create an empty one)
 pub fn load_state(cfg: &Config) -> Result<State> {
     let path = &cfg.state_path;
     if !Path::new(path).exists() {
@@ -56,7 +56,7 @@ pub fn load_state(cfg: &Config) -> Result<State> {
     Ok(state)
 }
 
-/// Save state to the JSON file.
+/// Save state to JSON
 pub fn save_state(cfg: &Config, state: &State) -> Result<()> {
     let path = &cfg.state_path;
     if let Some(parent) = path.parent() {
@@ -68,21 +68,55 @@ pub fn save_state(cfg: &Config, state: &State) -> Result<()> {
 }
 
 impl State {
-    /// Find a mutable reference to a feed by id, alias, or url.
-    pub fn find_feed_mut(&mut self, id_or_url: &str) -> Option<&mut Feed> {
-        self.feeds.iter_mut().find(|f| {
-            f.id == id_or_url || f.alias.as_deref() == Some(id_or_url) || f.url == id_or_url
+    /// Centralised matching logic: match by alias OR title (case-insensitive),
+    /// plus fallback to exact id/url match.
+    fn feed_matches(f: &Feed, key: &str) -> bool {
+        let key_lower = key.to_lowercase();
+
+        // Alias match
+        if let Some(alias) = &f.alias {
+            if alias.to_lowercase() == key_lower {
+                return true;
+            }
+        }
+
+        // Title match
+        if let Some(title) = &f.title {
+            if title.to_lowercase() == key_lower {
+                return true;
+            }
+        }
+
+        // Fallback: exact match on id or url
+        if f.id == key || f.url == key {
+            return true;
+        }
+
+        false
+    }
+
+    /// Find immutable feed by alias/title/id/url
+    pub fn find_feed(&self, key: &str) -> Option<&Feed> {
+        self.feeds.iter().find(|f| Self::feed_matches(f, key))
+    }
+
+    /// Find mutable feed by alias/title/id/url
+    pub fn find_feed_mut(&mut self, key: &str) -> Option<&mut Feed> {
+        self.feeds.iter_mut().find(|f| Self::feed_matches(f, key))
+    }
+
+    /// Find feed index by alias/title/id/url
+    pub fn find_feed_index(&self, key: &str) -> Option<usize> {
+        self.feeds.iter().enumerate().find_map(|(i, f)| {
+            if Self::feed_matches(f, key) {
+                Some(i)
+            } else {
+                None
+            }
         })
     }
 
-    /// Find an immutable reference to a feed by id, alias, or url.
-    pub fn find_feed(&self, id_or_url: &str) -> Option<&Feed> {
-        self.feeds.iter().find(|f| {
-            f.id == id_or_url || f.alias.as_deref() == Some(id_or_url) || f.url == id_or_url
-        })
-    }
-
-    /// Add a feed; error if same id or url already exists.
+    /// Add feed (error if duplicate by id or url)
     pub fn add_feed(&mut self, feed: Feed) -> Result<()> {
         if self
             .feeds
@@ -95,20 +129,15 @@ impl State {
         Ok(())
     }
 
-    /// Remove a feed by id/alias/url and drop its items.
-    /// Returns how many feeds were removed (0 or 1).
-    pub fn remove_feed(&mut self, id_or_url: &str) -> usize {
-        // Collect IDs of feeds we’re about to remove
+    /// Remove a feed & all its items using alias/title/id/url
+    pub fn remove_feed(&mut self, key: &str) -> usize {
         let mut removed_ids: Vec<String> = Vec::new();
 
         self.feeds.retain(|f| {
-            let to_remove =
-                f.id == id_or_url || f.alias.as_deref() == Some(id_or_url) || f.url == id_or_url;
-
+            let to_remove = Self::feed_matches(f, key);
             if to_remove {
                 removed_ids.push(f.id.clone());
             }
-
             !to_remove
         });
 
