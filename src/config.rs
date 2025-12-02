@@ -4,22 +4,17 @@ use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
 
-/// Shape of config.toml on disk
+/// Shape of config.toml on disk (flat keys)
+///
+/// Example:
+/// default_limit = 5
+/// refresh_age_mins = 60
+/// state_file = "/some/custom/path.json"
 #[derive(Debug, Deserialize)]
-pub struct GeneralConfig {
+pub struct RawConfig {
     pub default_limit: Option<usize>,
     pub refresh_age_mins: Option<u64>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct PathsConfig {
     pub state_file: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ConfigFile {
-    pub general: Option<GeneralConfig>,
-    pub paths: Option<PathsConfig>,
 }
 
 /// Resolved config used by the app
@@ -31,33 +26,31 @@ pub struct Config {
 }
 
 /// Load config from ~/.config/rsso/config.toml if it exists,
-/// otherwise use sensible defaults.
+/// otherwise use sensible defaults:
+///
+/// default_limit = 5
+/// refresh_age_mins = 60
+/// state_file = "/path/to/state.json"
 pub fn load_config() -> Result<Config> {
     let config_path = config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("rsso")
         .join("config.toml");
 
-    let mut cfg_file: Option<ConfigFile> = None;
+    let mut raw: Option<RawConfig> = None;
 
     if config_path.exists() {
         let contents = fs::read_to_string(&config_path)?;
-        cfg_file = Some(toml::from_str(&contents)?);
+        raw = Some(toml::from_str(&contents)?);
     }
 
-    let default_limit = cfg_file
-        .as_ref()
-        .and_then(|c| c.general.as_ref()?.default_limit)
-        .unwrap_or(20);
+    let default_limit = raw.as_ref().and_then(|c| c.default_limit).unwrap_or(20);
 
-    let refresh_age_mins = cfg_file
-        .as_ref()
-        .and_then(|c| c.general.as_ref()?.refresh_age_mins)
-        .unwrap_or(60);
+    let refresh_age_mins = raw.as_ref().and_then(|c| c.refresh_age_mins).unwrap_or(60);
 
-    let state_path = cfg_file
+    let state_path = raw
         .as_ref()
-        .and_then(|c| c.paths.as_ref()?.state_file.clone())
+        .and_then(|c| c.state_file.clone())
         .map(PathBuf::from)
         .unwrap_or_else(|| {
             data_dir()
