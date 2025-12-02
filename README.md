@@ -1,6 +1,7 @@
 ## rsso
 
 `rsso` is a minimal RSS feed organiser for the command line.
+
 I'm building it because I want it, and I want to learn Rust over the Summer.
 
 This is a work in progress.
