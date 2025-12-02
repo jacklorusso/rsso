@@ -68,8 +68,8 @@ pub fn save_state(cfg: &Config, state: &State) -> Result<()> {
 }
 
 impl State {
-    /// Centralised matching logic: match by alias OR title (case-insensitive),
-    /// plus fallback to exact id/url match.
+    /// Match by alias OR title (case-insensitive),
+    /// fallback to exact id/url match.
     fn feed_matches(f: &Feed, key: &str) -> bool {
         let key_lower = key.to_lowercase();
 
@@ -93,16 +93,6 @@ impl State {
         }
 
         false
-    }
-
-    /// Find immutable feed by alias/title/id/url
-    pub fn find_feed(&self, key: &str) -> Option<&Feed> {
-        self.feeds.iter().find(|f| Self::feed_matches(f, key))
-    }
-
-    /// Find mutable feed by alias/title/id/url
-    pub fn find_feed_mut(&mut self, key: &str) -> Option<&mut Feed> {
-        self.feeds.iter_mut().find(|f| Self::feed_matches(f, key))
     }
 
     /// Find feed index by alias/title/id/url

@@ -54,7 +54,16 @@ pub enum Cmd {
         /// Zero or more aliases/URLs. If none given, refresh all feeds.
         ids_or_urls: Vec<String>,
     },
-    // No subcommand -> default: show recent items from all feeds
+
+    /// Rename a feed (change its alias)
+    Rename {
+        /// Feed alias/title/id/url to select which feed to rename
+        key: String,
+
+        /// New alias to assign
+        #[arg(long)]
+        alias: String,
+    }, // No subcommand -> default: show recent items from all feeds
 }
 
 fn main() -> Result<()> {
