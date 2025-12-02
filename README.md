@@ -3,10 +3,12 @@
 `rsso` is a minimal RSS feed organiser for the command line.
 I'm building it because I want it, and I want to learn Rust over the Summer.
 
+This is a work in progress.
 
 ## Features
 
 - Subscribe to feeds, with or without using an alias
+
 ```bash
 rsso sub https://blog.rust-lang.org/feed.xml
 rsso sub https://blog.rust-lang.org/feed.xml --alias rust
@@ -67,6 +69,8 @@ refresh_age_mins = 60
 ```
 
 ## Install
+
+Probably not ready for consumption just yet, but I'm shipping as I go... You can install it if you want!
 
 ```
 cargo install rsso
