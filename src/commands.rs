@@ -224,10 +224,14 @@ fn cmd_show_all(state: &mut State, cfg: &Config, limit: usize) -> Result<()> {
     // Clone items so we can sort without touching original order
     let mut items = state.items.clone();
 
-    // Sort newest first, using published_at or first_seen_at
+    // Sort newest first, using published_at or updated_at or first_seen_at
     items.sort_by(|a, b| {
-        let a_date = a.published_at.unwrap_or(a.first_seen_at);
-        let b_date = b.published_at.unwrap_or(b.first_seen_at);
+        let a_date = a
+            .published_at
+            .unwrap_or(a.updated_at.unwrap_or(a.first_seen_at));
+        let b_date = b
+            .published_at
+            .unwrap_or(b.updated_at.unwrap_or(a.first_seen_at));
         b_date.cmp(&a_date)
     });
 
@@ -288,8 +292,12 @@ fn cmd_show_feed(state: &mut State, cfg: &Config, key: &str, limit: usize) -> Re
         .collect();
 
     items.sort_by(|a, b| {
-        let a_date = a.published_at.unwrap_or(a.first_seen_at);
-        let b_date = b.published_at.unwrap_or(b.first_seen_at);
+        let a_date = a
+            .published_at
+            .unwrap_or(a.updated_at.unwrap_or(a.first_seen_at));
+        let b_date = b
+            .published_at
+            .unwrap_or(b.updated_at.unwrap_or(b.first_seen_at));
         b_date.cmp(&a_date)
     });
 

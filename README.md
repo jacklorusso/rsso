@@ -19,7 +19,7 @@ cargo install --path .
 
 ## Features
 
-- Subscribe to feeds, and optionally provide an alias
+Subscribe to feeds, and optionally provide an alias
 
 ```bash
 rsso sub https://blog.rust-lang.org/feed.xml

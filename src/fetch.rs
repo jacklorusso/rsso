@@ -40,6 +40,8 @@ pub fn fetch_feed(feed: &Feed) -> Result<(Option<String>, Vec<Item>)> {
 
         let published_at = entry.published.map(|d| DateTime::<Utc>::from(d));
 
+        let updated_at = entry.updated.map(|d| DateTime::<Utc>::from(d));
+
         let summary = entry.summary.as_ref().map(|s| s.content.clone());
 
         let item = Item {
@@ -48,6 +50,7 @@ pub fn fetch_feed(feed: &Feed) -> Result<(Option<String>, Vec<Item>)> {
             link,
             summary,
             published_at,
+            updated_at,
             first_seen_at: Utc::now(),
         };
 

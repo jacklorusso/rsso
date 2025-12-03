@@ -15,6 +15,8 @@ use crate::commands::run_command;
 pub struct Cli {
     /// Maximum number of items to show (overrides config)
     #[arg(short = 'n', long = "limit", global = true)]
+    // TODO: should this be called limit or number/something else...
+    // Fix in config file too if changed
     pub limit: Option<usize>,
 
     #[command(subcommand)]

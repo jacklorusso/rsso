@@ -26,6 +26,7 @@ pub struct Item {
     pub title: String,
     pub link: String,
     pub published_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
     pub summary: Option<String>,
     pub first_seen_at: DateTime<Utc>,
 }
