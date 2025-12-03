@@ -1,10 +1,10 @@
 [package]
 name = "rsso"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 authors = ["Jack Lo Russo <jack.lorusso@gmail.com>"]
 license = "MIT"
-description = "CLI tool for RSS feeds"
+description = "A minimal RSS feed organiser for the command line"
 readme = "README.md"
 homepage = "https://github.com/jacklorusso/rsso"
 repository = "https://github.com/jacklorusso/rsso"
@@ -15,9 +15,9 @@ clap = { version = "4", features = ["derive"] }
 colored = "3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-toml = "0.8"
+toml = "0.9"
 reqwest = { version = "0.12", features = ["blocking"] }
-feed-rs = "1"
+feed-rs = "2"
 chrono = { version = "0.4", features = ["serde"] }
-dirs = "5"
+dirs = "6"
 anyhow = "1"
