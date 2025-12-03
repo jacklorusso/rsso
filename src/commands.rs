@@ -181,7 +181,7 @@ fn refresh_feed_if_needed(state: &mut State, feed_index: usize, cfg: &Config) ->
 fn print_item_line(item: &Item, state: &State, cfg: &Config) {
     let date = item
         .published_at
-        .unwrap_or(item.first_seen_at)
+        .unwrap_or(item.updated_at.unwrap_or(item.first_seen_at))
         .format("%d %b %y")
         .to_string();
 
@@ -231,7 +231,7 @@ fn cmd_show_all(state: &mut State, cfg: &Config, limit: usize) -> Result<()> {
             .unwrap_or(a.updated_at.unwrap_or(a.first_seen_at));
         let b_date = b
             .published_at
-            .unwrap_or(b.updated_at.unwrap_or(a.first_seen_at));
+            .unwrap_or(b.updated_at.unwrap_or(b.first_seen_at));
         b_date.cmp(&a_date)
     });
 
