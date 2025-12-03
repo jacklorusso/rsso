@@ -90,11 +90,17 @@ Your `rsso` data state is kept in a JSON file in a path that should make sense f
 - macOS: `~/Library/Application Support/rsso/state.json`
 - Windows: `%APPDATA%\\rsso\\state.json`
 
-You shouldn't need to touch this, but you can override the location by setting `state_file = "/custom/path.json"` in your `config.toml` if you wish. Be careful though! If you don't move your original state file to this location, or if you somehow delete this file, you'll be starting fresh.
+You don't need to touch this, but you _can_ override the location by setting in your `config.toml` if you wish.
+```toml
+state_file = "/custom/path.json"
+```
+Be careful though! If you don't move your original state file to this location, or if you somehow delete this file, you'll be starting fresh.
 
 ## TODO:
 
--[ ] OPML file import / export
+-[] OPML file import / export
+
+-[] Tags / groups
 
 ## License
 
