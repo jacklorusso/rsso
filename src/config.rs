@@ -4,16 +4,18 @@ use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
 
-/// Shape of config.toml on disk (flat keys)
+/// Shape of config.toml on disk
 ///
 /// Example:
 /// default_limit = 5
 /// refresh_age_mins = 60
+/// new_line_between_items = false
 /// state_file = "/some/custom/path.json"
 #[derive(Debug, Deserialize)]
 pub struct RawConfig {
     pub default_limit: Option<usize>,
     pub refresh_age_mins: Option<u64>,
+    pub new_line_between_items: Option<bool>,
     pub state_file: Option<String>,
 }
 
@@ -22,6 +24,7 @@ pub struct RawConfig {
 pub struct Config {
     pub default_limit: usize,
     pub refresh_age_mins: u64,
+    pub new_line_between_items: bool,
     pub state_path: PathBuf,
 }
 
@@ -30,6 +33,7 @@ pub struct Config {
 ///
 /// default_limit = 5
 /// refresh_age_mins = 60
+/// new_line_between_items = false
 /// state_file = "/path/to/state.json"
 pub fn load_config() -> Result<Config> {
     let config_path = config_dir()
@@ -48,6 +52,11 @@ pub fn load_config() -> Result<Config> {
 
     let refresh_age_mins = raw.as_ref().and_then(|c| c.refresh_age_mins).unwrap_or(60);
 
+    let new_line_between_items = raw
+        .as_ref()
+        .and_then(|c| c.new_line_between_items)
+        .unwrap_or(false);
+
     let state_path = raw
         .as_ref()
         .and_then(|c| c.state_file.clone())
@@ -62,6 +71,7 @@ pub fn load_config() -> Result<Config> {
     Ok(Config {
         default_limit,
         refresh_age_mins,
+        new_line_between_items,
         state_path,
     })
 }

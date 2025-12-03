@@ -11,7 +11,7 @@ use crate::commands::run_command;
 /// Command-line arguments for rsso
 #[derive(Parser, Debug)]
 #[command(name = "rsso")]
-#[command(about = "A minimal RSS/Atom feed reader for the command line")]
+#[command(about = "A minimal RSS/Atom feed organiser for the command line")]
 pub struct Cli {
     /// Maximum number of items to show (overrides config)
     #[arg(short = 'n', long = "limit", global = true)]

@@ -1,5 +1,6 @@
 use anyhow::{Result, bail};
 use chrono::{Duration, Utc};
+use colored::Colorize;
 
 use crate::config::Config;
 use crate::fetch::fetch_feed;
@@ -177,8 +178,12 @@ fn refresh_feed_if_needed(state: &mut State, feed_index: usize, cfg: &Config) ->
 }
 
 /// Print a single item in pipe-friendly format
-fn print_item_line(item: &Item, state: &State) {
-    let date = item.published_at.unwrap_or(item.first_seen_at).to_rfc3339();
+fn print_item_line(item: &Item, state: &State, cfg: &Config) {
+    let date = item
+        .published_at
+        .unwrap_or(item.first_seen_at)
+        .format("%d %b %y")
+        .to_string();
 
     let feed_label = state
         .feeds
@@ -192,7 +197,16 @@ fn print_item_line(item: &Item, state: &State) {
         })
         .unwrap_or_else(|| item.feed_id.clone());
 
-    println!("{} | {} | {} | {}", date, feed_label, item.title, item.link);
+    println!(
+        "{} | {} | {} | {}",
+        date,
+        feed_label,
+        item.title.bold(),
+        item.link.blue()
+    );
+    if cfg.new_line_between_items {
+        println!("");
+    }
 }
 
 /// Default `rsso` behaviour: show recent items across all feeds
@@ -219,7 +233,7 @@ fn cmd_show_all(state: &mut State, cfg: &Config, limit: usize) -> Result<()> {
 
     // Limit and print
     for item in items.into_iter().take(limit) {
-        print_item_line(&item, state);
+        print_item_line(&item, state, cfg);
     }
 
     // After printing items, show a warning if any feeds had errors
@@ -280,7 +294,7 @@ fn cmd_show_feed(state: &mut State, cfg: &Config, key: &str, limit: usize) -> Re
     });
 
     for item in items.into_iter().take(limit) {
-        print_item_line(&item, state);
+        print_item_line(&item, state, cfg);
     }
 
     Ok(())
