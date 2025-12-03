@@ -2,13 +2,24 @@
 
 `rsso` is a minimal RSS feed organiser for the command line.
 
-I'm building it because I want it, and I want to learn Rust over the Summer.
+Keep up to date with feeds that you care about, or just find something to read over coffee, in a distraction-free environment.
 
-This is a work in progress.
+## Install
+
+```
+cargo install rsso
+```
+
+Or from source:
+```bash
+git clone https://github.com/jacklorusso/rsso
+cd rsso
+cargo install --path .
+```
 
 ## Features
 
-- Subscribe to feeds, with or without using an alias
+- Subscribe to feeds, and optionally provide an alias
 
 ```bash
 rsso sub https://blog.rust-lang.org/feed.xml
@@ -28,24 +39,26 @@ rsso list
 
 ```
 
-Show latest items (default: 20, or config-defined)
+Show latest items
 
 ```bash
 rsso
 ```
-Override default / config-defined number of items
+
+To override the default, you can specify with `-n <desired-number>` or change the default in your [config file]()
 
 ```bash
-rsso -n 10
+rsso -n 50
 ```
 
 Show items for one feed (instead of all subscribed feeds)
 
 ```bash
-rsso feed rust -n 5
+rsso feed rust
+rsso feed rust -n 10
 ```
 
-Refresh feeds manually
+Refresh feeds manually (items are cached for one hour by default, but you can change this in your [config file]())
 
 ```bash
 rsso refresh
@@ -59,30 +72,29 @@ rsso feed rust | grep nightly
 
 ```
 
-## Config
+## Optional config file
 
-Create `~/.config/rsso/config.toml`
+To override `rsso`'s defaults, create a `~/.config/rsso/config.toml` file.
 
 ```toml
 default_limit = 20
 refresh_age_mins = 60
-# state_file = "/custom/path.json"   # optional override
+new_line_between_items = false
 ```
 
-## Install
+### State file
 
-Probably not ready for consumption just yet, but I'm shipping as I go... You can install it if you want!
+Your `rsso` data state is kept in a JSON file in a path that should make sense for your OS, as defined by [dirs-rs](https://codeberg.org/dirs/dirs-rs):
 
-```
-cargo install rsso
-```
+- Linux: `~/.local/share/rsso/state.json`
+- macOS: `~/Library/Application Support/rsso/state.json`
+- Windows: `%APPDATA%\\rsso\\state.json`
 
-Or from source:
-```bash
-git clone https://github.com/jacklorusso/rsso
-cd rsso
-cargo install --path .
-```
+You shouldn't need to touch this, but you can override the location by setting `state_file = "/custom/path.json"` in your `config.toml` if you wish. Be careful though! If you don't move your original state file to this location, or if you somehow delete this file, you'll be starting fresh.
+
+## TODO:
+
+-[ ] OPML file import / export
 
 ## License
 
