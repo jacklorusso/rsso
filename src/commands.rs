@@ -209,6 +209,18 @@ fn print_item_line(item: &Item, state: &State, cfg: &Config) {
     }
 }
 
+fn sort_items_newest_first(items: &mut Vec<Item>) {
+    items.sort_by(|a, b| {
+        let a_date = a
+            .published_at
+            .unwrap_or(a.updated_at.unwrap_or(a.first_seen_at));
+        let b_date = b
+            .published_at
+            .unwrap_or(b.updated_at.unwrap_or(b.first_seen_at));
+        b_date.cmp(&a_date)
+    });
+}
+
 /// Default `rsso` behaviour: show recent items across all feeds
 fn cmd_show_all(state: &mut State, cfg: &Config, limit: usize) -> Result<()> {
     if state.feeds.is_empty() {
@@ -224,16 +236,7 @@ fn cmd_show_all(state: &mut State, cfg: &Config, limit: usize) -> Result<()> {
     // Clone items so we can sort without touching original order
     let mut items = state.items.clone();
 
-    // Sort newest first, using published_at or updated_at or first_seen_at
-    items.sort_by(|a, b| {
-        let a_date = a
-            .published_at
-            .unwrap_or(a.updated_at.unwrap_or(a.first_seen_at));
-        let b_date = b
-            .published_at
-            .unwrap_or(b.updated_at.unwrap_or(b.first_seen_at));
-        b_date.cmp(&a_date)
-    });
+    sort_items_newest_first(&mut items);
 
     // Limit and print
     for item in items.into_iter().take(limit) {
@@ -291,15 +294,7 @@ fn cmd_show_feed(state: &mut State, cfg: &Config, key: &str, limit: usize) -> Re
         .cloned()
         .collect();
 
-    items.sort_by(|a, b| {
-        let a_date = a
-            .published_at
-            .unwrap_or(a.updated_at.unwrap_or(a.first_seen_at));
-        let b_date = b
-            .published_at
-            .unwrap_or(b.updated_at.unwrap_or(b.first_seen_at));
-        b_date.cmp(&a_date)
-    });
+    sort_items_newest_first(&mut items);
 
     for item in items.into_iter().take(limit) {
         print_item_line(&item, state, cfg);
