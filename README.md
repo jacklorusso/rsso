@@ -58,6 +58,19 @@ rsso feed rust
 rsso feed rust -n 10
 ```
 
+Import feeds from an OPML file (feeds are added alongside existing ones):
+
+```bash
+rsso import ~/Downloads/subscriptions.opml
+```
+
+Export current subscriptions to an OPML file (defaults next to your state file, or specify a path):
+
+```bash
+rsso export
+rsso export --output ./my_feeds.opml
+```
+
 Refresh feeds manually (items are cached for one hour by default, but you can change this in your [config file]())
 
 ```bash
@@ -97,8 +110,6 @@ state_file = "/custom/path.json"
 Be careful though! If you don't move your original state file to this location, or if you somehow delete this file, you'll be starting fresh.
 
 ## TODO:
-
--[] OPML file import / export
 
 -[] Tags / groups
 

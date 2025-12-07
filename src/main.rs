@@ -65,6 +65,19 @@ pub enum Cmd {
         /// New alias to assign
         #[arg(long)]
         alias: String,
+    },
+
+    /// Import subscriptions from an OPML file
+    Import {
+        /// Path to an OPML file to import
+        path: String,
+    },
+
+    /// Export subscriptions to an OPML file
+    Export {
+        /// Output path for the OPML file (defaults to a file next to the state file)
+        #[arg(short, long, value_name = "PATH")]
+        output: Option<String>,
     }, // No subcommand -> default: show recent items from all feeds
 }
 

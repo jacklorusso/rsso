@@ -21,3 +21,4 @@ feed-rs = "2"
 chrono = { version = "0.4", features = ["serde"] }
 dirs = "6"
 anyhow = "1"
+opml = "1"
