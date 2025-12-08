@@ -1,11 +1,20 @@
 use anyhow::{Result, bail};
 use chrono::{Duration, Utc};
 use colored::Colorize;
+use reqwest::Client;
 
 use crate::config::Config;
 use crate::fetch::fetch_feed;
 use crate::state::{Feed, Item, State};
 use crate::{Cli, Cmd};
+
+fn build_http_client() -> Result<Client> {
+    let client = Client::builder()
+        .user_agent("rsso")
+        .timeout(std::time::Duration::from_secs(10))
+        .build()?;
+    Ok(client)
+}
 
 pub async fn run_command(cli: Cli, cfg: &Config, state: &mut State) -> Result<()> {
     let limit = cli.limit.unwrap_or(cfg.default_limit);
@@ -21,17 +30,17 @@ pub async fn run_command(cli: Cli, cfg: &Config, state: &mut State) -> Result<()
             cmd_list(state)?;
         }
         Some(Cmd::Feed { id_or_url }) => {
-            cmd_show_feed(state, cfg, &id_or_url, limit)?;
+            cmd_show_feed(state, cfg, &id_or_url, limit).await?;
         }
         Some(Cmd::Refresh { ids_or_urls }) => {
-            cmd_refresh(state, cfg, &ids_or_urls)?;
+            cmd_refresh(state, cfg, &ids_or_urls).await?;
         }
         Some(Cmd::Rename { key, alias }) => {
             cmd_rename(state, &key, &alias)?;
         }
         None => {
             // default: show recent items across all feeds
-            cmd_show_all(state, cfg, limit)?;
+            cmd_show_all(state, cfg, limit).await?;
         }
     }
 
@@ -138,23 +147,37 @@ fn cmd_rename(state: &mut State, key: &str, new_alias: &str) -> Result<()> {
 }
 
 /// Refresh one feed if its cache is stale
-fn refresh_feed_if_needed(state: &mut State, feed_index: usize, cfg: &Config) -> Result<()> {
+async fn refresh_feed_if_needed(
+    state: &mut State,
+    feed_index: usize,
+    cfg: &Config,
+    client: &Client,
+) -> Result<()> {
     let now = Utc::now();
     let refresh_after = Duration::minutes(cfg.refresh_age_mins as i64);
 
-    // Get a mutable reference to this feed
-    let feed = &mut state.feeds[feed_index];
-
-    let needs_refresh = match feed.last_fetched_at {
-        None => true,
-        Some(last) => now - last >= refresh_after,
+    // Take a snapshot of the feed to decide if we need to refresh
+    // and to pass to fetch_feed without holding a &mut borrow across .await
+    let (needs_refresh, feed_snapshot) = {
+        let feed = &state.feeds[feed_index];
+        let needs_refresh = match feed.last_fetched_at {
+            None => true,
+            Some(last) => now - last >= refresh_after,
+        };
+        (needs_refresh, feed.clone())
     };
 
     if !needs_refresh {
         return Ok(());
     }
 
-    match fetch_feed(feed) {
+    // Perform the network request asynchronously using the snapshot
+    let fetch_result = fetch_feed(client, &feed_snapshot).await;
+
+    // Re-borrow the original feed mutably to apply changes
+    let feed = &mut state.feeds[feed_index];
+
+    match fetch_result {
         Ok((title_opt, mut new_items)) => {
             if let Some(t) = title_opt {
                 feed.title = Some(t);
@@ -222,15 +245,18 @@ fn sort_items_newest_first(items: &mut Vec<Item>) {
 }
 
 /// Default `rsso` behaviour: show recent items across all feeds
-fn cmd_show_all(state: &mut State, cfg: &Config, limit: usize) -> Result<()> {
+async fn cmd_show_all(state: &mut State, cfg: &Config, limit: usize) -> Result<()> {
     if state.feeds.is_empty() {
         println!("No feeds subscribed. Use `rsso sub <url>` to add one.");
         return Ok(());
     }
 
-    // Refresh all feeds if needed
+    // Build a shared HTTP client for this command
+    let client = build_http_client()?;
+
+    // Refresh all feeds if needed (sequentially for now)
     for idx in 0..state.feeds.len() {
-        refresh_feed_if_needed(state, idx, cfg)?;
+        refresh_feed_if_needed(state, idx, cfg, &client).await?;
     }
 
     // Clone items so we can sort without touching original order
@@ -272,7 +298,8 @@ fn cmd_show_all(state: &mut State, cfg: &Config, limit: usize) -> Result<()> {
 }
 
 /// Show recent items for a single feed
-fn cmd_show_feed(state: &mut State, cfg: &Config, key: &str, limit: usize) -> Result<()> {
+/// Show recent items for a single feed
+async fn cmd_show_feed(state: &mut State, cfg: &Config, key: &str, limit: usize) -> Result<()> {
     // Find index of the matching feed using alias OR title OR id OR url
     let feed_index = match state.find_feed_index(key) {
         Some(i) => i,
@@ -281,8 +308,10 @@ fn cmd_show_feed(state: &mut State, cfg: &Config, key: &str, limit: usize) -> Re
         }
     };
 
+    let client = build_http_client()?;
+
     // Refresh that single feed if needed
-    refresh_feed_if_needed(state, feed_index, cfg)?;
+    refresh_feed_if_needed(state, feed_index, cfg, &client).await?;
 
     let feed_id = state.feeds[feed_index].id.clone();
 
@@ -304,16 +333,18 @@ fn cmd_show_feed(state: &mut State, cfg: &Config, key: &str, limit: usize) -> Re
 }
 
 /// Refresh all feeds, or a selected subset
-fn cmd_refresh(state: &mut State, cfg: &Config, keys: &[String]) -> Result<()> {
+async fn cmd_refresh(state: &mut State, cfg: &Config, keys: &[String]) -> Result<()> {
     if state.feeds.is_empty() {
         println!("No feeds subscribed.");
         return Ok(());
     }
 
+    let client = build_http_client()?;
+
     if keys.is_empty() {
         // Refresh all
         for idx in 0..state.feeds.len() {
-            refresh_feed_if_needed(state, idx, cfg)?;
+            refresh_feed_if_needed(state, idx, cfg, &client).await?;
         }
         println!("Refreshed all feeds.");
     } else {
@@ -321,7 +352,7 @@ fn cmd_refresh(state: &mut State, cfg: &Config, keys: &[String]) -> Result<()> {
         for key in keys {
             match state.find_feed_index(key) {
                 Some(i) => {
-                    refresh_feed_if_needed(state, i, cfg)?;
+                    refresh_feed_if_needed(state, i, cfg, &client).await?;
                     println!("Refreshed {}", key);
                 }
                 None => {
