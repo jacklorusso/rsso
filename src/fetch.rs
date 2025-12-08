@@ -2,25 +2,20 @@ use crate::state::{Feed, Item};
 use anyhow::{Result, anyhow};
 use chrono::{DateTime, Utc};
 use feed_rs::parser;
-use reqwest::blocking::Client;
+use reqwest::Client;
 
 /// Fetch and parse a feed.
 /// Returns (title, Vec<Item>) on success.
-pub fn fetch_feed(feed: &Feed) -> Result<(Option<String>, Vec<Item>)> {
-    let client = Client::builder()
-        .user_agent("rsso/0.1")
-        .timeout(std::time::Duration::from_secs(10))
-        .build()?;
+pub async fn fetch_feed(client: &Client, feed: &Feed) -> Result<(Option<String>, Vec<Item>)> {
+    let resp = client.get(&feed.url).send().await?;
 
-    let resp = client.get(&feed.url).send()?;
     if !resp.status().is_success() {
         return Err(anyhow!("HTTP error {}", resp.status()));
     }
 
-    let bytes = resp.bytes()?;
+    let bytes = resp.bytes().await?;
     let parsed = parser::parse(&bytes[..])?;
 
-    // Extract feed title if present
     let feed_title = parsed.title.map(|t| t.content);
 
     let mut items = Vec::new();

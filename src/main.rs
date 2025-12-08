@@ -6,8 +6,6 @@ mod state;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
-use crate::commands::run_command;
-
 /// Command-line arguments for rsso
 #[derive(Parser, Debug)]
 #[command(name = "rsso")]
@@ -68,13 +66,14 @@ pub enum Cmd {
     }, // No subcommand -> default: show recent items from all feeds
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let cfg = config::load_config()?;
     let mut state = state::load_state(&cfg)?;
 
-    run_command(cli, &cfg, &mut state)?;
+    commands::run_command(cli, &cfg, &mut state).await?;
 
     state::save_state(&cfg, &state)?;
     Ok(())
