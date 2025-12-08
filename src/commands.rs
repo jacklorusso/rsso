@@ -259,7 +259,7 @@ fn print_item_line(item: &Item, state: &State, cfg: &Config) {
     }
 }
 
-fn sort_items_newest_first(items: &mut Vec<Item>) {
+fn sort_items_newest_first(items: &mut Vec<&Item>) {
     items.sort_by(|a, b| {
         let a_date = a
             .published_at
@@ -386,13 +386,13 @@ async fn cmd_show_all(state: &mut State, cfg: &Config, limit: usize) -> Result<(
     let indices: Vec<usize> = (0..state.feeds.len()).collect();
     refresh_feeds_concurrent(state, cfg, &client, indices).await?;
 
-    // Clone items so we can sort without touching original order
-    let mut items = state.items.clone();
+    // Build a vector of references (we used to clone items but this is faster)
+    let mut items: Vec<&Item> = state.items.iter().collect();
+
     sort_items_newest_first(&mut items);
 
-    // Limit and print
     for item in items.into_iter().take(limit) {
-        print_item_line(&item, state, cfg);
+        print_item_line(item, state, cfg);
     }
 
     // After printing items, show a warning if any feeds had errors
@@ -441,17 +441,16 @@ async fn cmd_show_feed(state: &mut State, cfg: &Config, key: &str, limit: usize)
     let feed_id = state.feeds[feed_index].id.clone();
 
     // Collect & sort items only for this feed
-    let mut items: Vec<Item> = state
+    let mut items: Vec<&Item> = state
         .items
         .iter()
         .filter(|i| i.feed_id == feed_id)
-        .cloned()
         .collect();
 
     sort_items_newest_first(&mut items);
 
     for item in items.into_iter().take(limit) {
-        print_item_line(&item, state, cfg);
+        print_item_line(item, state, cfg);
     }
 
     Ok(())
