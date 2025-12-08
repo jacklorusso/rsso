@@ -7,7 +7,9 @@ to read over coffee, in a distraction-free environment.
 
 ## Install
 
-    cargo install rsso
+```bash
+cargo install rsso
+```
 
 Or from source:
 
@@ -65,13 +67,11 @@ rsso refresh
 rsso refresh rust
 ```
 
-Text-based output plays nice with other tools --- for example:
+Text-based output plays nice with other tools. For example:
 
 ```bash
 rsso feed rust | grep nightly
 ```
-
-------------------------------------------------------------------------
 
 ## Optional config file
 
@@ -81,7 +81,7 @@ Create `~/.config/rsso/config.toml` to override defaults:
 default_limit = 20
 refresh_age_mins = 60
 new_line_between_items = false
-max_history_per_feed = 2200
+max_history_per_feed = 200
 ```
 
 ### History retention
@@ -94,8 +94,7 @@ max_history_per_feed = 200
 
 `rsso` trims older items whenever a feed is refreshed, to keep reads and writes to state fast.
 
-**Important:**
-If you run:
+**Important:** if you wanted to list a very large number of items from a single feed, for whatever reason (perhaps you are searching for something)...
 
 ```bash
 rsso feed rust -n 500
@@ -107,7 +106,7 @@ but your config says:
 max_history_per_feed = 200
 ```
 
-you will still only see 200 items. You would need to override the default if you are looking to list more than the default maximum of 200 items for a single feed.
+you will still only see 200 items. You would need to override `max_history_per_feed` in your config file if you are looking to list more than that.
 
 ### State file
 
@@ -124,12 +123,17 @@ state_file = "/custom/path.json"
 ```
 Be careful though! If you don't move your original state file to this location, or if you somehow delete this file, you'll be starting fresh.
 
+
 ------------------------------------------------------------------------
 
 ## TODO
 
 -   [] OPML import/export
 -   [] Tags / groups
+  
+------------------------------------------------------------------------
+
+
 
 ## License
 
