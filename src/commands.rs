@@ -7,7 +7,7 @@ use crate::fetch::fetch_feed;
 use crate::state::{Feed, Item, State};
 use crate::{Cli, Cmd};
 
-pub fn run_command(cli: Cli, cfg: &Config, state: &mut State) -> Result<()> {
+pub async fn run_command(cli: Cli, cfg: &Config, state: &mut State) -> Result<()> {
     let limit = cli.limit.unwrap_or(cfg.default_limit);
 
     match cli.command {
