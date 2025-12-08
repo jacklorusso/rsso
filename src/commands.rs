@@ -47,6 +47,106 @@ pub async fn run_command(cli: Cli, cfg: &Config, state: &mut State) -> Result<()
     Ok(())
 }
 
+/// Refresh one feed if its cache is stale
+async fn refresh_feed_if_needed(
+    state: &mut State,
+    feed_index: usize,
+    cfg: &Config,
+    client: &Client,
+) -> Result<()> {
+    let now = Utc::now();
+    let refresh_after = Duration::minutes(cfg.refresh_age_mins as i64);
+
+    // Take a snapshot of the feed to decide if we need to refresh
+    // and to pass to fetch_feed without holding a &mut borrow across .await
+    let (needs_refresh, feed_snapshot) = {
+        let feed = &state.feeds[feed_index];
+        let needs_refresh = match feed.last_fetched_at {
+            None => true,
+            Some(last) => now - last >= refresh_after,
+        };
+        (needs_refresh, feed.clone())
+    };
+
+    if !needs_refresh {
+        return Ok(());
+    }
+
+    // Perform the network request asynchronously using the snapshot
+    let fetch_result = fetch_feed(client, &feed_snapshot).await;
+
+    // Re-borrow the original feed mutably to apply changes
+    let feed = &mut state.feeds[feed_index];
+
+    match fetch_result {
+        Ok((title_opt, mut new_items)) => {
+            if let Some(t) = title_opt {
+                feed.title = Some(t);
+            }
+            feed.last_fetched_at = Some(now);
+            feed.last_error = None;
+
+            // Drop old items for this feed
+            let feed_id = feed.id.clone();
+            state.items.retain(|i| i.feed_id != feed_id);
+
+            // Add the new items
+            state.items.append(&mut new_items);
+        }
+        Err(err) => {
+            feed.last_error = Some(err.to_string());
+        }
+    }
+
+    Ok(())
+}
+
+/// Print a single item in pipe-friendly format
+fn print_item_line(item: &Item, state: &State, cfg: &Config) {
+    let date = item
+        .published_at
+        .unwrap_or(item.updated_at.unwrap_or(item.first_seen_at))
+        .format("%d %b %y")
+        .to_string();
+
+    let feed_label = state
+        .feeds
+        .iter()
+        .find(|f| f.id == item.feed_id)
+        .and_then(|f| {
+            f.alias
+                .clone()
+                .or_else(|| f.title.clone())
+                .or_else(|| Some(f.id.clone()))
+        })
+        .unwrap_or_else(|| item.feed_id.clone());
+
+    println!(
+        "{} | {} | {} | {}",
+        date,
+        feed_label,
+        item.title.bold(),
+        item.link.blue()
+    );
+    if cfg.new_line_between_items {
+        println!("");
+    }
+}
+
+fn sort_items_newest_first(items: &mut Vec<Item>) {
+    items.sort_by(|a, b| {
+        let a_date = a
+            .published_at
+            .unwrap_or(a.updated_at.unwrap_or(a.first_seen_at));
+        let b_date = b
+            .published_at
+            .unwrap_or(b.updated_at.unwrap_or(b.first_seen_at));
+        b_date.cmp(&a_date)
+    });
+}
+
+// COMMANDS
+
 /// Subscribe to a new feed
 fn cmd_sub(state: &mut State, url: &str, alias: Option<String>) -> Result<()> {
     // crude id: use alias if provided, otherwise derive from URL
@@ -146,104 +246,6 @@ fn cmd_rename(state: &mut State, key: &str, new_alias: &str) -> Result<()> {
     Ok(())
 }
 
-/// Refresh one feed if its cache is stale
-async fn refresh_feed_if_needed(
-    state: &mut State,
-    feed_index: usize,
-    cfg: &Config,
-    client: &Client,
-) -> Result<()> {
-    let now = Utc::now();
-    let refresh_after = Duration::minutes(cfg.refresh_age_mins as i64);
-
-    // Take a snapshot of the feed to decide if we need to refresh
-    // and to pass to fetch_feed without holding a &mut borrow across .await
-    let (needs_refresh, feed_snapshot) = {
-        let feed = &state.feeds[feed_index];
-        let needs_refresh = match feed.last_fetched_at {
-            None => true,
-            Some(last) => now - last >= refresh_after,
-        };
-        (needs_refresh, feed.clone())
-    };
-
-    if !needs_refresh {
-        return Ok(());
-    }
-
-    // Perform the network request asynchronously using the snapshot
-    let fetch_result = fetch_feed(client, &feed_snapshot).await;
-
-    // Re-borrow the original feed mutably to apply changes
-    let feed = &mut state.feeds[feed_index];
-
-    match fetch_result {
-        Ok((title_opt, mut new_items)) => {
-            if let Some(t) = title_opt {
-                feed.title = Some(t);
-            }
-            feed.last_fetched_at = Some(now);
-            feed.last_error = None;
-
-            // Drop old items for this feed
-            let feed_id = feed.id.clone();
-            state.items.retain(|i| i.feed_id != feed_id);
-
-            // Add the new items
-            state.items.append(&mut new_items);
-        }
-        Err(err) => {
-            feed.last_error = Some(err.to_string());
-        }
-    }
-
-    Ok(())
-}
-
-/// Print a single item in pipe-friendly format
-fn print_item_line(item: &Item, state: &State, cfg: &Config) {
-    let date = item
-        .published_at
-        .unwrap_or(item.updated_at.unwrap_or(item.first_seen_at))
-        .format("%d %b %y")
-        .to_string();
-
-    let feed_label = state
-        .feeds
-        .iter()
-        .find(|f| f.id == item.feed_id)
-        .and_then(|f| {
-            f.alias
-                .clone()
-                .or_else(|| f.title.clone())
-                .or_else(|| Some(f.id.clone()))
-        })
-        .unwrap_or_else(|| item.feed_id.clone());
-
-    println!(
-        "{} | {} | {} | {}",
-        date,
-        feed_label,
-        item.title.bold(),
-        item.link.blue()
-    );
-    if cfg.new_line_between_items {
-        println!("");
-    }
-}
-
-fn sort_items_newest_first(items: &mut Vec<Item>) {
-    items.sort_by(|a, b| {
-        let a_date = a
-            .published_at
-            .unwrap_or(a.updated_at.unwrap_or(a.first_seen_at));
-        let b_date = b
-            .published_at
-            .unwrap_or(b.updated_at.unwrap_or(b.first_seen_at));
-        b_date.cmp(&a_date)
-    });
-}
-
 /// Default `rsso` behaviour: show recent items across all feeds
 async fn cmd_show_all(state: &mut State, cfg: &Config, limit: usize) -> Result<()> {
     if state.feeds.is_empty() {
@@ -297,7 +299,6 @@ async fn cmd_show_all(state: &mut State, cfg: &Config, limit: usize) -> Result<(
     Ok(())
 }
 
-/// Show recent items for a single feed
 /// Show recent items for a single feed
 async fn cmd_show_feed(state: &mut State, cfg: &Config, key: &str, limit: usize) -> Result<()> {
     // Find index of the matching feed using alias OR title OR id OR url
