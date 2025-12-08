@@ -11,13 +11,14 @@ repository = "https://github.com/jacklorusso/rsso"
 keywords = ["cli", "terminal", "rss"]
 categories = ["command-line-utilities"]
 [dependencies]
+anyhow = "1"
+chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
 colored = "3"
+dirs = "6"
+feed-rs = "2"
+reqwest = { version = "0.12", features = ["blocking"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+tokio = { version = "1", features = ["full"] }
 toml = "0.9"
-reqwest = { version = "0.12", features = ["blocking"] }
-feed-rs = "2"
-chrono = { version = "0.4", features = ["serde"] }
-dirs = "6"
-anyhow = "1"
