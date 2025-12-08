@@ -16,6 +16,7 @@ pub struct RawConfig {
     pub default_limit: Option<usize>,
     pub refresh_age_mins: Option<u64>,
     pub new_line_between_items: Option<bool>,
+    pub max_history_per_feed: Option<usize>,
     pub state_file: Option<String>,
 }
 
@@ -25,6 +26,7 @@ pub struct Config {
     pub default_limit: usize,
     pub refresh_age_mins: u64,
     pub new_line_between_items: bool,
+    pub max_history_per_feed: usize,
     pub state_path: PathBuf,
 }
 
@@ -34,6 +36,7 @@ pub struct Config {
 /// default_limit = 5
 /// refresh_age_mins = 60
 /// new_line_between_items = false
+/// max_history_per_feed = 200
 /// state_file = "/path/to/state.json"
 pub fn load_config() -> Result<Config> {
     let config_path = config_dir()
@@ -57,6 +60,11 @@ pub fn load_config() -> Result<Config> {
         .and_then(|c| c.new_line_between_items)
         .unwrap_or(false);
 
+    let max_history_per_feed = raw
+        .as_ref()
+        .and_then(|c| c.max_history_per_feed)
+        .unwrap_or(200);
+
     let state_path = raw
         .as_ref()
         .and_then(|c| c.state_file.clone())
@@ -72,6 +80,7 @@ pub fn load_config() -> Result<Config> {
         default_limit,
         refresh_age_mins,
         new_line_between_items,
+        max_history_per_feed,
         state_path,
     })
 }

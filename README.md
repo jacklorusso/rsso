@@ -2,15 +2,15 @@
 
 `rsso` is a minimal RSS feed organiser for the command line.
 
-Keep up to date with feeds that you care about, or just find something to read over coffee, in a distraction-free environment.
+Keep up to date with feeds that you care about, or just find something
+to read over coffee, in a distraction-free environment.
 
 ## Install
 
-```
-cargo install rsso
-```
+    cargo install rsso
 
 Or from source:
+
 ```bash
 git clone https://github.com/jacklorusso/rsso
 cd rsso
@@ -36,7 +36,6 @@ List subscribed feeds
 
 ```bash
 rsso list
-
 ```
 
 Show latest items
@@ -45,62 +44,92 @@ Show latest items
 rsso
 ```
 
-To override the default, you can specify with `-n <desired-number>` or change the default in your [config file]()
+To override the default, you can specify with `-n <desired-number>` or
+change the default in your config file.
 
 ```bash
 rsso -n 50
 ```
 
-Show items for one feed (instead of all subscribed feeds)
+Show items for one feed:
 
 ```bash
 rsso feed rust
 rsso feed rust -n 10
 ```
 
-Refresh feeds manually (items are cached for one hour by default, but you can change this in your [config file]())
+Refresh feeds manually:
 
 ```bash
 rsso refresh
 rsso refresh rust
 ```
 
-Text-based output plays nice with other tools - for example, you can search for key words with `grep`
+Text-based output plays nice with other tools --- for example:
 
 ```bash
-rsso feed rust | grep nightly 
-
+rsso feed rust | grep nightly
 ```
+
+------------------------------------------------------------------------
 
 ## Optional config file
 
-To override `rsso`'s defaults, create a `~/.config/rsso/config.toml` file.
+Create `~/.config/rsso/config.toml` to override defaults:
 
 ```toml
 default_limit = 20
 refresh_age_mins = 60
 new_line_between_items = false
+max_history_per_feed = 2200
 ```
+
+### History retention
+
+Control how much item history is kept *per feed*:
+
+```toml
+max_history_per_feed = 200
+```
+
+`rsso` trims older items whenever a feed is refreshed, to keep reads and writes to state fast.
+
+**Important:**
+If you run:
+
+```bash
+rsso feed rust -n 500
+```
+
+but your config says:
+
+```toml
+max_history_per_feed = 200
+```
+
+you will still only see 200 items. You would need to override the default if you are looking to list more than the default maximum of 200 items for a single feed.
 
 ### State file
 
-Your `rsso` data state is kept in a JSON file in a path that should make sense for your OS, as defined by [dirs-rs](https://codeberg.org/dirs/dirs-rs):
+State is stored in a platform‑appropriate location:
 
-- Linux: `~/.local/share/rsso/state.json`
-- macOS: `~/Library/Application Support/rsso/state.json`
-- Windows: `%APPDATA%\\rsso\\state.json`
+-   Linux: `~/.local/share/rsso/state.json`
+-   macOS: `~/Library/Application Support/rsso/state.json`
+-   Windows: `%APPDATA%\rsso\state.json`
 
-You don't need to touch this, but you _can_ override the location by setting in your `config.toml` if you wish.
+You can override this:
+
 ```toml
 state_file = "/custom/path.json"
 ```
 Be careful though! If you don't move your original state file to this location, or if you somehow delete this file, you'll be starting fresh.
 
-## TODO:
+------------------------------------------------------------------------
 
--[] OPML file import / export
+## TODO
 
--[] Tags / groups
+-   [] OPML import/export
+-   [] Tags / groups
 
 ## License
 
