@@ -3,6 +3,7 @@ use chrono::{Duration, Utc};
 use colored::Colorize;
 use futures::{StreamExt, stream};
 use reqwest::Client;
+use std::collections::HashMap;
 
 use crate::config::Config;
 use crate::fetch::fetch_feed;
@@ -227,25 +228,30 @@ async fn refresh_feed_if_needed(
     Ok(())
 }
 
+fn build_feed_label_map(state: &State) -> HashMap<String, String> {
+    let mut map = HashMap::new();
+
+    for f in &state.feeds {
+        // Same label logic you had in print_item_line before
+        let label = f
+            .alias
+            .clone()
+            .or_else(|| f.title.clone())
+            .unwrap_or_else(|| f.id.clone());
+
+        map.insert(f.id.clone(), label);
+    }
+
+    map
+}
+
 /// Print a single item in pipe-friendly format
-fn print_item_line(item: &Item, state: &State, cfg: &Config) {
+fn print_item_line(item: &Item, feed_label: &str, cfg: &Config) {
     let date = item
         .published_at
         .unwrap_or(item.updated_at.unwrap_or(item.first_seen_at))
         .format("%d %b %y")
         .to_string();
-
-    let feed_label = state
-        .feeds
-        .iter()
-        .find(|f| f.id == item.feed_id)
-        .and_then(|f| {
-            f.alias
-                .clone()
-                .or_else(|| f.title.clone())
-                .or_else(|| Some(f.id.clone()))
-        })
-        .unwrap_or_else(|| item.feed_id.clone());
 
     println!(
         "{} | {} | {} | {}",
@@ -254,11 +260,13 @@ fn print_item_line(item: &Item, state: &State, cfg: &Config) {
         item.title.bold(),
         item.link.blue()
     );
+
     if cfg.new_line_between_items {
-        println!("");
+        println!();
     }
 }
 
+/// Sort items - first by published, then updated, and finally by first_seen_at
 fn sort_items_newest_first(items: &mut Vec<&Item>) {
     items.sort_by(|a, b| {
         let a_date = a
@@ -386,13 +394,22 @@ async fn cmd_show_all(state: &mut State, cfg: &Config, limit: usize) -> Result<(
     let indices: Vec<usize> = (0..state.feeds.len()).collect();
     refresh_feeds_concurrent(state, cfg, &client, indices).await?;
 
+    // Build a feed label map once (feed_id -> label)
+    let label_map = build_feed_label_map(state);
+
     // Build a vector of references (we used to clone items but this is faster)
     let mut items: Vec<&Item> = state.items.iter().collect();
 
     sort_items_newest_first(&mut items);
 
     for item in items.into_iter().take(limit) {
-        print_item_line(item, state, cfg);
+        // Look up label by feed_id; fall back to the feed_id itself if missing
+        let feed_label = label_map
+            .get(&item.feed_id)
+            .map(|s| s.as_str())
+            .unwrap_or(&item.feed_id);
+
+        print_item_line(item, feed_label, cfg);
     }
 
     // After printing items, show a warning if any feeds had errors
@@ -438,19 +455,29 @@ async fn cmd_show_feed(state: &mut State, cfg: &Config, key: &str, limit: usize)
     // Refresh that single feed if needed
     refresh_feed_if_needed(state, feed_index, cfg, &client).await?;
 
-    let feed_id = state.feeds[feed_index].id.clone();
+    let feed = &state.feeds[feed_index];
+    let feed_id = feed.id.clone();
 
-    // Collect & sort items only for this feed
+    // Get feed label from alias, title or id
+    let feed_label = feed
+        .alias
+        .as_deref()
+        .or(feed.title.as_deref())
+        .unwrap_or(&feed.id);
+
+    // Collect references to items only for this feed
     let mut items: Vec<&Item> = state
         .items
         .iter()
         .filter(|i| i.feed_id == feed_id)
         .collect();
 
+    // Sort newest first
     sort_items_newest_first(&mut items);
 
+    // Print only the latest `limit` items
     for item in items.into_iter().take(limit) {
-        print_item_line(item, state, cfg);
+        print_item_line(item, feed_label, cfg);
     }
 
     Ok(())
