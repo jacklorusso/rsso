@@ -219,6 +219,40 @@ async fn refresh_feed_if_needed(
 
             // Add the new items
             state.items.append(&mut new_items);
+
+            // Trim history for this feed so that reads and writes to state file remain
+            // snappy
+            let max = cfg.max_history_per_feed;
+
+            // Gather all items for this feed
+            let mut items_for_feed: Vec<&Item> = state
+                .items
+                .iter()
+                .filter(|i| i.feed_id == feed_id)
+                .collect();
+
+            // Sort newest first (uses your existing helper, now for &Item)
+            sort_items_newest_first(&mut items_for_feed);
+
+            // If we exceed the limit, remove the older ones
+            if items_for_feed.len() > max {
+                let to_keep: std::collections::HashSet<_> = items_for_feed
+                    .into_iter()
+                    .take(max)
+                    .map(|i| i as *const Item) // pointer identity
+                    .collect();
+
+                // Only trim items for this feed, leave other feeds untouched
+                state.items.retain(|i| {
+                    if i.feed_id != feed_id {
+                        true
+                    } else {
+                        // this feed → keep only if pointer is in `to_keep`
+                        let ptr = i as *const Item;
+                        to_keep.contains(&ptr)
+                    }
+                });
+            }
         }
         Err(err) => {
             feed.last_error = Some(err.to_string());
